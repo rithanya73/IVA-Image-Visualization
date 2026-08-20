@@ -1,287 +1,74 @@
-from flask import Flask, request, render_template_string
-import webbrowser
-from threading import Timer
+import streamlit as st
 import cv2
 import numpy as np
-import base64
-from io import BytesIO
 from PIL import Image
 
-app = Flask(__name__)
+st.set_page_config(
+    page_title="IVA - Image Visualization",
+    page_icon="🖼️",
+    layout="wide"
+)
 
-HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>IVA - Image Visualization</title>
+st.markdown("""
+<style>
+    .main-title {
+        background: #202124;
+        color: white;
+        padding: 25px;
+        text-align: center;
+        border-radius: 10px;
+    }
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f6f8;
-            color: #222;
-        }
+    .main-title h1 {
+        margin: 0;
+        font-size: 30px;
+    }
 
-        .header {
-            background: #202124;
-            color: white;
-            padding: 25px;
-            text-align: center;
-        }
+    .main-title p {
+        color: #ccc;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-        .header h1 {
-            margin: 0;
-            font-size: 30px;
-        }
-
-        .header p {
-            margin-top: 8px;
-            color: #ccc;
-        }
-
-        .container {
-            width: 90%;
-            max-width: 1100px;
-            margin: 30px auto;
-        }
-
-        .card {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            margin-bottom: 25px;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.1);
-        }
-
-        h2 {
-            margin-top: 0;
-        }
-
-        input[type="file"] {
-            margin: 15px 0;
-        }
-
-        select, button {
-            padding: 11px 15px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            font-size: 15px;
-        }
-
-        button {
-            background: #202124;
-            color: white;
-            cursor: pointer;
-            border: none;
-        }
-
-        button:hover {
-            background: #444;
-        }
-
-        .images {
-            display: flex;
-            gap: 25px;
-            flex-wrap: wrap;
-        }
-
-        .image-box {
-            flex: 1;
-            min-width: 300px;
-            text-align: center;
-        }
-
-        .image-box img {
-            max-width: 100%;
-            max-height: 400px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
-
-        .info {
-            background: #f1f3f4;
-            padding: 15px;
-            border-radius: 8px;
-            line-height: 1.6;
-        }
-
-        .operator {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .operator div {
-            padding: 18px;
-            background: #f1f3f4;
-            border-radius: 8px;
-        }
-    </style>
-</head>
-
-<body>
-
-<div class="header">
+st.markdown("""
+<div class="main-title">
     <h1>Image Visualization & Analysis</h1>
     <p>Spatial Domain Method - Gradient Operators</p>
 </div>
+""", unsafe_allow_html=True)
 
-<div class="container">
+st.write("")
 
-    <div class="card">
+st.subheader("📤 Upload Image")
 
-        <h2>Upload Image</h2>
+uploaded_file = st.file_uploader(
+    "Choose an image",
+    type=["jpg", "jpeg", "png"]
+)
 
-        <form method="POST" enctype="multipart/form-data">
-
-            <input type="file" name="image" accept="image/*" required>
-
-            <br><br>
-
-            <label><b>Select Gradient Operator:</b></label>
-
-            <select name="operator">
-                <option value="sobel">Sobel Operator</option>
-                <option value="prewitt">Prewitt Operator</option>
-                <option value="roberts">Roberts Operator</option>
-                <option value="laplacian">Laplacian Operator</option>
-            </select>
-
-            <br><br>
-
-            <button type="submit">Process Image</button>
-
-        </form>
-
-    </div>
-
-    {% if original %}
-
-    <div class="card">
-
-        <h2>Results</h2>
-
-        <div class="images">
-
-            <div class="image-box">
-                <h3>Original Image</h3>
-                <img src="data:image/png;base64,{{ original }}">
-            </div>
-
-            <div class="image-box">
-                <h3>{{ operator_name }}</h3>
-                <img src="data:image/png;base64,{{ result }}">
-            </div>
-
-        </div>
-
-    </div>
-
-    <div class="card">
-
-        <h2>Gradient Operator Information</h2>
-
-        <div class="info">
-
-            {% if operator == "sobel" %}
-
-            <b>Sobel Operator</b>
-            <p>
-                Sobel operator detects edges by calculating the
-                horizontal and vertical intensity changes in an image.
-            </p>
-
-            <p>
-                It uses two 3 × 3 kernels for detecting X and Y
-                directions.
-            </p>
-
-            {% elif operator == "prewitt" %}
-
-            <b>Prewitt Operator</b>
-            <p>
-                Prewitt operator is used for detecting edges and
-                boundaries in an image.
-            </p>
-
-            <p>
-                It uses horizontal and vertical 3 × 3 kernels.
-            </p>
-
-            {% elif operator == "roberts" %}
-
-            <b>Roberts Operator</b>
-            <p>
-                Roberts operator is a simple gradient operator that
-                detects edges using 2 × 2 kernels.
-            </p>
-
-            {% elif operator == "laplacian" %}
-
-            <b>Laplacian Operator</b>
-            <p>
-                Laplacian is a second-order derivative operator.
-                It detects regions of rapid intensity change.
-            </p>
-
-            {% endif %}
-
-        </div>
-
-    </div>
-
-    {% endif %}
-
-</div>
-
-</body>
-</html>
-"""
-
-
-def image_to_base64(image):
-    """
-    Convert OpenCV image to Base64 so that
-    it can be displayed directly in the browser.
-    """
-
-    if len(image.shape) == 2:
-        image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-    else:
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    pil_image = Image.fromarray(image)
-
-    buffer = BytesIO()
-    pil_image.save(buffer, format="PNG")
-
-    return base64.b64encode(buffer.getvalue()).decode("utf-8")
+operator = st.selectbox(
+    "Select Gradient Operator",
+    [
+        "Sobel Operator",
+        "Prewitt Operator",
+        "Roberts Operator",
+        "Laplacian Operator"
+    ]
+)
 
 
 def apply_gradient(image, operator):
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # ---------------- SOBEL ----------------
-
-    if operator == "sobel":
+    if operator == "Sobel Operator":
 
         sobel_x = cv2.Sobel(
-            gray,
-            cv2.CV_64F,
-            1,
-            0,
-            ksize=3
+            gray, cv2.CV_64F, 1, 0, ksize=3
         )
 
         sobel_y = cv2.Sobel(
-            gray,
-            cv2.CV_64F,
-            0,
-            1,
-            ksize=3
+            gray, cv2.CV_64F, 0, 1, ksize=3
         )
 
         magnitude = cv2.magnitude(
@@ -289,13 +76,9 @@ def apply_gradient(image, operator):
             sobel_y.astype(np.float32)
         )
 
-        result = cv2.convertScaleAbs(magnitude)
+        return cv2.convertScaleAbs(magnitude)
 
-        return result
-
-    # ---------------- PREWITT ----------------
-
-    elif operator == "prewitt":
+    elif operator == "Prewitt Operator":
 
         kernel_x = np.array([
             [-1, 0, 1],
@@ -314,13 +97,9 @@ def apply_gradient(image, operator):
 
         magnitude = cv2.magnitude(gx, gy)
 
-        result = cv2.convertScaleAbs(magnitude)
+        return cv2.convertScaleAbs(magnitude)
 
-        return result
-
-    # ---------------- ROBERTS ----------------
-
-    elif operator == "roberts":
+    elif operator == "Roberts Operator":
 
         kernel_x = np.array([
             [1, 0],
@@ -337,100 +116,100 @@ def apply_gradient(image, operator):
 
         magnitude = cv2.magnitude(gx, gy)
 
-        result = cv2.convertScaleAbs(magnitude)
+        return cv2.convertScaleAbs(magnitude)
 
-        return result
-
-    # ---------------- LAPLACIAN ----------------
-
-    elif operator == "laplacian":
+    elif operator == "Laplacian Operator":
 
         result = cv2.Laplacian(
             gray,
             cv2.CV_64F
         )
 
-        result = cv2.convertScaleAbs(result)
-
-        return result
-
-    return gray
+        return cv2.convertScaleAbs(result)
 
 
-@app.route("/", methods=["GET", "POST"])
-def home():
+if uploaded_file is not None:
 
-    original = None
-    result = None
-    operator = None
-    operator_name = None
+    file_bytes = np.asarray(
+        bytearray(uploaded_file.read()),
+        dtype=np.uint8
+    )
 
-    if request.method == "POST":
+    image = cv2.imdecode(
+        file_bytes,
+        cv2.IMREAD_COLOR
+    )
 
-        file = request.files.get("image")
+    if image is not None:
 
-        operator = request.form.get(
-            "operator",
-            "sobel"
+        processed = apply_gradient(
+            image,
+            operator
         )
 
-        if file:
+        st.divider()
 
-            file_bytes = np.frombuffer(
-                file.read(),
-                np.uint8
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("Original Image")
+
+            original_rgb = cv2.cvtColor(
+                image,
+                cv2.COLOR_BGR2RGB
             )
 
-            image = cv2.imdecode(
-                file_bytes,
-                cv2.IMREAD_COLOR
+            st.image(
+                original_rgb,
+                use_container_width=True
             )
 
-            if image is not None:
+        with col2:
+            st.subheader(operator)
 
-                processed = apply_gradient(
-                    image,
-                    operator
-                )
+            st.image(
+                processed,
+                use_container_width=True
+            )
 
-                original = image_to_base64(
-                    image
-                )
+        st.divider()
 
-                result = image_to_base64(
-                    processed
-                )
+        st.subheader("🔍 Gradient Operator Information")
 
-                names = {
-                    "sobel": "Sobel Edge Detection",
-                    "prewitt": "Prewitt Edge Detection",
-                    "roberts": "Roberts Edge Detection",
-                    "laplacian": "Laplacian Edge Detection"
-                }
+        if operator == "Sobel Operator":
 
-                operator_name = names.get(
-                    operator,
-                    "Gradient Result"
-                )
+            st.write(
+                "**Sobel Operator** detects edges by calculating "
+                "horizontal and vertical intensity changes."
+            )
 
-    return render_template_string(
-        HTML,
-        original=original,
-        result=result,
-        operator=operator,
-        operator_name=operator_name
-    )
-if __name__ == "__main__":
+            st.write(
+                "It uses two 3 × 3 kernels for detecting "
+                "X and Y directions."
+            )
 
-    print("--------------------------------------")
-    print("IVA Image Visualization Application")
-    print("--------------------------------------")
-    print("Opening browser...")
-    print("--------------------------------------")
+        elif operator == "Prewitt Operator":
 
-    def open_browser():
-        webbrowser.open("http://127.0.0.1:5000")
+            st.write(
+                "**Prewitt Operator** is used for detecting "
+                "edges and boundaries in an image."
+            )
 
-    Timer(1, open_browser).start()
+            st.write(
+                "It uses horizontal and vertical 3 × 3 kernels."
+            )
 
-    app.run(debug=True, use_reloader=False)
+        elif operator == "Roberts Operator":
+
+            st.write(
+                "**Roberts Operator** is a simple gradient "
+                "operator that detects edges using 2 × 2 kernels."
+            )
+
+        elif operator == "Laplacian Operator":
+
+            st.write(
+                "**Laplacian Operator** is a second-order "
+                "derivative operator that detects regions "
+                "of rapid intensity change."
+            )
