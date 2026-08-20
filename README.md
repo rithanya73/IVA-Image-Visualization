@@ -29,33 +29,6 @@ The application is built using **Streamlit**, making it lightweight, easy to dep
 * **NumPy**
 * **Image Processing Libraries**
 
-## ⚙️ How to Run Locally
-
-Clone the repository:
-
-```bash
-git clone https://github.com/YOUR-USERNAME/YOUR-REPOSITORY.git
-cd YOUR-REPOSITORY
-```
-
-Install the required dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Run the Streamlit application:
-
-```bash
-streamlit run app.py
-```
-
-The application will open in your browser at:
-
-```text
-http://localhost:8501
-```
-
 ## 🌐 Deployment
 
 The application is deployed using **Streamlit Community Cloud** and is available online without requiring local installation.
